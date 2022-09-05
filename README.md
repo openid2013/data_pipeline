@@ -112,22 +112,39 @@ ORDER BY date;
 
 ### Requête 2
 
+#### Using PIVOT() on BigQuery
 ```
-WITH total_ventes_par_product_type AS (
+WITH client_detailed_products AS (
   SELECT 
       t.client_id,
       p.product_type,
-      count(p.product_id) as total
+      (t.prod_price * t.prod_qty) AS total_price
   FROM transaction t, product_nomenclature p
   WHERE t.prod_id = p.product_id
     AND t.date BETWEEN '2020-01-01' AND '2020-12-31'
-  GROUP BY t.client_id, p.product_type
 )
-SELECT 
-    * 
-FROM total_ventes_par_product_type
+SELECT * FROM client_detailed_products
 PIVOT(
-  SUM(total) as ventes
+  SUM(total_price) as ventes
   FOR product_type in ('meuble', 'deco')
 );
+```
+
+#### Without using PIVOT()
+```
+WITH client_detailed_products AS (
+  SELECT 
+      t.client_id,
+      p.product_type,
+      (t.prod_price * t.prod_qty) AS total_price
+  FROM transaction t, product_nomenclature p
+  WHERE t.prod_id = p.product_id
+    AND t.date BETWEEN '2020-01-01' AND '2020-12-31'
+)
+SELECT 
+  client_id,
+  SUM(CASE product_type WHEN "meuble" THEN total_price ELSE 0 END) AS ventes_meuble,
+  SUM(CASE product_type WHEN "deco" THEN total_price ELSE 0 END) AS ventes_deco
+FROM client_detailed_products
+GROUP BY client_id;
 ```
